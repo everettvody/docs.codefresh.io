@@ -9,40 +9,45 @@ toc: true
 ---
 Clones a Git repository to the filesystem.
 
-A pipeline can have any number of git clone steps (even none). You can checkout code from any private or public repository. Cloning a repository is not constrained to the trigger of a pipeline. You can trigger a pipeline from a commit that happened on Git repository A while the pipeline is checking out code from Git Repository B.
+A pipeline can have any number of `git-clone` steps (or none). Use them to checkout code from any private or public Git repository. Cloning a repository is not constrained to the repository that triggered the pipeline. For example, committing code to Git repository "A" may trigger a pipeline that checks out code from Git repository "B".
 
->Notice that if you are an existing customer before May 2019, Codefresh will automatically checkout the code from a [connected git repository]({{site.baseurl}}/docs/integrations/git-providers/) when a pipeline is created on that repository. In this case an implicit git clone step is included in your pipeline. You can still override it with your own git clone step as explained in this page
+>Note that if you were an existing Codefresh customer before May 2019, an implicit `git-clone` step is included in your pipeline: Codefresh will automatically checkout the code from a [connected git repository]({{site.baseurl}}/docs/integrations/git-providers/) when a pipeline is created for that repository. You can override it with your own `git-clone` step as explained on this page.
 
-## Usage
+## Example Usage
 
+`codefresh.yml`
   `YAML`
 {% highlight yaml %}
-step_name:
-  type: git-clone
-  title: Step Title
-  description: Step description
-  working_directory: /path
-  repo: owner/repo
-  git: my-git-provider
-  revision: abcdef12345
-  credentials:
-    username: user
-    password: credentials
-  fail_fast: false
-  when:
-    branch:
-      ignore: [ develop ]
-  on_success:
-    ...
-  on_fail:
-    ...
-  on_finish:
-    ...
-  retry:
-    ...  
+version: '1.0'
+steps:
+  MyStepName:
+    type: git-clone
+    title: Step Title
+    description: Step description
+    working_directory: /path
+    repo: owner/repo
+    git: my-git-provider
+    revision: abcdef12345
+    credentials:
+      username: user
+      password: credentials
+    fail_fast: false
+    when:
+      branch:
+        ignore: [ develop ]
+    on_success:
+      ...
+    on_fail:
+      ...
+    on_finish:
+      ...
+    retry:
+      ...  
 {% endhighlight %}
 
 ## Fields
+
+The following fields apply to a step of type `git-clone`:
 
 {: .table .table-bordered .table-hover}
 | Field                                      | Description                                                                                                                                                                                                                        | Required/Optional/Default |
@@ -64,16 +69,16 @@ step_name:
 -  Working Directory
 
 {{site.data.callout.callout_info}}
-If you want to extend the git-clone step you can use the freestyle step. Example how to do it you can find [here]({{site.baseurl}}/docs/yaml-examples/examples/git-clone-private-repository-using-freestyle-step/) 
+If you want to extend the `git-clone` step you can use the freestyle step ([example here]({{site.baseurl}}/docs/yaml-examples/examples/git-clone-private-repository-using-freestyle-step/))
 {{site.data.callout.end}}
 
 ## Basic clone step (project-based pipeline)
 
-The easiest way to use a git clone step is to use your default git provider as configured in [built-in git integrations]({{site.baseurl}}/docs/integrations/git-providers/).
+The easiest way to use a `git-clone` step is to use your default git provider as configured in [built-in git integrations]({{site.baseurl}}/docs/integrations/git-providers/).
 
 Here is an example of a pipeline that will automatically check out the repository that triggered it (i.e. a commit happened on that repository).
 
->Notice that the name of the clone step is `main_clone`. This will automatically set the working directory of all other steps that follow it **inside** the folder of the project that was checked out. This is normally what you want for a pipeline that only checks out a single project. If you use any other name apart from `main_clone` the working directory for all subsequent steps will not be affected and it will default on the [shared volume]({{site.baseurl}}/docs/configure-ci-cd-pipeline/introduction-to-codefresh-pipelines/#sharing-the-workspace-between-build-steps) which is the [parent folder]({{site.baseurl}}/docs/configure-ci-cd-pipeline/introduction-to-codefresh-pipelines/#cloning-the-source-code) of checkouts.
+>Naming your step `main_clone` triggers a convenient side effect: using this name will automatically set the working directory of subsequent steps to be **inside** the folder of the repository that was checked out. This is normally what you want for a pipeline that only checks out a single project -- think of `git clone something; cd something`. This special behavior is only linked to the name `main_clone`: using any other name will leave the working directory for all subsequent steps as the [shared volume]({{site.baseurl}}/docs/configure-ci-cd-pipeline/introduction-to-codefresh-pipelines/#sharing-the-workspace-between-build-steps) which is the [parent folder]({{site.baseurl}}/docs/configure-ci-cd-pipeline/introduction-to-codefresh-pipelines/#cloning-the-source-code) of checkouts.
 
 
 
@@ -136,7 +141,7 @@ steps:
 ## Checkout a specific repository/revision (project based pipeline)
 
 If you want to check out a specific git repository regardless of what repository actually created the trigger
-you can just define all values in a non-static manner. For example, if you want your pipeline to always checkout git repository `foo` even when the trigger happened from repository `bar` you can define the checkout step as below:
+you must define all values in a non-static manner. For example, if you want your pipeline to always checkout git repository `foo` even when the trigger was initiated by repository `bar` you can define the checkout step as below:
 
 `codefresh.yml`
 {% highlight yaml %}
@@ -157,7 +162,7 @@ steps:
 {% endraw %}
 {% endhighlight %}
 
-In a similar manner you can also define that the pipeline will always checkout master, regardless of the commit that actually triggered it.
+In a similar manner you can specify that the pipeline will always checkout the `master` branch, regardless of where the commit responsible for triggering was made.
 
 `codefresh.yml`
 {% highlight yaml %}
@@ -180,8 +185,8 @@ steps:
 
 ## Checking multiple git repositories
 
-It is very easy to checkout additional repositories in a single pipeline by adding more `git-clone` steps.
-In that case you should use different names for the steps (instead of `main_clone`) as this will make the working
+It is possible to checkout additional repositories in a single pipeline by adding more `git-clone` steps.
+In this case you should use different names for the steps (instead of `main_clone`) as this will make the working
 folder for all steps the [shared volume]({{site.baseurl}}/docs/configure-ci-cd-pipeline/introduction-to-codefresh-pipelines/#sharing-the-workspace-between-build-steps).
 
 `codefresh.yml`
@@ -213,12 +218,12 @@ steps:
 ## Skip or customize default clone (repository-based pipeline) 
 
 If you have existing pipelines connected to repositories (only for Codefresh accounts created before May 2019)
-a git clone step is transparently added to git attached pipelines without you having to explicitly add a step into the pipeline. This is a convenience to enable easy CI pipelines.  
+a git-clone step is transparently added to git attached pipelines without you having to explicitly add a step into the pipeline. This is a convenience to enable easier CI pipeline creation.  
 If you do not require git cloning, or you would like to customize the implicit git cloning behavior, you can choose to skip the automatically added git clone step.
 
 There are 2 ways to do that:
 
-1. Add a pipeline environment variable called `CF_SKIP_MAIN_CLONE` with value of `true`.
+1. Add a `CF_SKIP_MAIN_CLONE` environment variable to your pipeline in the Codefresh dashboard and set its value to `true`.
 
 -or-
 
@@ -266,9 +271,11 @@ steps:
 
 ## Working with GIT submodules
 
-To checkout a git project including its submodules you can use the [Codefresh submodule plugin](https://github.com/codefresh-io/plugins/tree/master/plugins/gitsubmodules). This plugin is already offered as a public docker image at [Dockerhub](https://hub.docker.com/r/codefresh/cfstep-gitsubmodules/tags).
+To checkout a git project including its submodules you can use the [Codefresh submodule plugin](https://github.com/codefresh-io/plugins/tree/master/plugins/gitsubmodules). This plugin is offered as a public docker image at [Dockerhub](https://hub.docker.com/r/codefresh/cfstep-gitsubmodules/tags).
 
 To use this module in your pipeline, add a new step like the one shown below.
+
+`codefresh.yml`
 
 ```yaml
 version: '1.0'
