@@ -177,9 +177,8 @@ where any step in the pipeline is using artifacts produced by a previous one.
 
 >The shared volume is **NOT available** in [build steps]({{site.baseurl}}/docs/codefresh-yaml/steps/build/). This is not a Codefresh limitation. Docker itself [does not allow volumes during builds](https://github.com/moby/moby/issues/14080). There is no folder `/codefresh/volume` inside a Dockerfile for you to access.
 
-You can also use [environment variables]({{site.baseurl}}/docs/codefresh-yaml/variables/) to share information between steps. All predefined environment variables
-are available to all steps, and each individual step can use `cf_export` to inject dynamically during the build process
-extra environment variables.
+You can also use [environment variables]({{site.baseurl}}/docs/codefresh-yaml/variables/) to share information between steps. All [predefined environment variables](https://codefresh.io/docs/docs/codefresh-yaml/variables/#system-provided-variables)
+are available to all steps, and each individual step can use `cf_export` to dynamically inject extra environment variables during the build process.
 
 
 ## Working with Codefresh pipelines
@@ -190,13 +189,13 @@ to build and deploy your projects.
 
 ### Cloning the source code
 
-You can clone source code using the built-in [git-clone step]({{site.baseurl}}/docs/codefresh-yaml/steps/git-clone/) as the first step in a Pipeline or run manually your own git clone commands in a freestyle step. Codefresh has built-in [Git integration]({{site.baseurl}}/docs/integrations/git-providers/) with all popular git providers (both cloud and on-premise installations).
+You can clone source code using the built-in [git-clone step]({{site.baseurl}}/docs/codefresh-yaml/steps/git-clone/) as the first step in a Pipeline or run manually your own git clone commands in a freestyle step. Codefresh has built-in [Git integrations]({{site.baseurl}}/docs/integrations/git-providers/) with all popular Git providers (both cloud and on-premise).
 
-Codefresh uses the shared volume as the parent folder of the project. So if your pipeline is connected to a GIT repo that contains `my-project` the following will happen:
+Codefresh uses its shared volume as the parent folder of the project. So if your pipeline is connected to a Git repo that contains `my-project` the following will happen:
 
 * `/codefresh/volume` is the shared directory for all steps
-* `/codefresh/volume/my-project` is where the source code exists. This is also the current working directory
-* Any other directory (e.g. `/bin`, `/var`, `/opt`) depends on the current container image that is used as build context
+* `/codefresh/volume/my-project` is where the source code exists (and the default current working directory)
+* Any other directory (e.g. `/bin`, `/var`, `/opt`) depends on the current container image that is used as the build context
 
 {% include 
 image.html 
@@ -208,22 +207,21 @@ caption="Codefresh checkout folder"
 max-width="80%" 
 %}
 
-There are three important points to consider regarding these folders.
+There are three important points to consider regarding these folders:
 
 First, the [working directory]({{ site.baseurl }}/docs/codefresh-yaml/working-directories/) of each step is by default the project folder (e.g. `/codefresh/volume/my-project`). Therefore
 your build step can run commands exactly as you would run them locally (e.g. `npm install, pip install, mvn package, bundle install`).
 
-Secondly, notice that the project folder is placed on the Codefresh volume, so by default it is also available to all other steps. The code that you checkout in the beginning, as well as all other files that are created on it, will
-be available to all steps. Once you create `node_modules`, or any other folder that exists inside the project folder, it will automatically persist for all other steps.
+Secondly, because the project folder is placed on the Codefresh volume, it is available by default to all other steps. E.g. the code and files that you checked out in the first step will be available to all subsequent steps. Once you create `node_modules`, or any other folder that inside the project folder, it will automatically persist for all other steps.
 
-Finally `/codefresh/volume` is an internal folder name and you should use  `{% raw %}${{CF_VOLUME_PATH}}{% endraw %}` in your codefresh.yml file
-if you really want to reference this folder. You can also reference your project folder as `{% raw %}${{CF_VOLUME_PATH}}/${{CF_REPO_NAME}}{% endraw %}` if you need it.
+Finally, `/codefresh/volume` is an internal name which is subject to change, so you should avoid hard-coding its name and instead use  `{% raw %}${{CF_VOLUME_PATH}}{% endraw %}` in your `codefresh.yml` file
+if you want to reference this folder. You can also reference your project folder as `{% raw %}${{CF_VOLUME_PATH}}/${{CF_REPO_NAME}}{% endraw %}` if needed.
 
 ### Working with Docker inside a Codefresh pipeline
 
 We have already seen that Codefresh pipelines are based on Docker images and that each step runs inside the context of a Docker container. You might be wondering how you can run Docker commands directly inside a Codefresh pipeline.
 
-The answer is that you don't. Even though in the future Codefresh might allow for Docker-in-Docker capabilities, at the moment this is not supported for security reason (only enterprise customers have access to the underlying Docker daemon). Any scripts that you already have that run Docker commands on their own will need to be adapted to Codefresh pipelines.
+The answer is that you don't. Even though in the future Codefresh might allow for Docker-in-Docker capabilities, at the moment this is not supported for security reasons (only enterprise customers have access to the underlying Docker daemon). Any scripts that you already have that run Docker commands on their own will need to be adapted to Codefresh pipelines.
 
 Usually you want to run a docker command for four reasons:
 
@@ -236,9 +234,9 @@ For all these situations Codefresh gives you special pipeline steps that perform
 
 1. The [build step]({{site.baseurl}}/docs/codefresh-yaml/steps/build/)
 1. The [push step]({{site.baseurl}}/docs/codefresh-yaml/steps/push/)
-1. The [compositions step]({{site.baseurl}}/docs/codefresh-yaml/steps/composition/)
+1. The [composition step]({{site.baseurl}}/docs/codefresh-yaml/steps/composition/)
 
-To actually run a docker container you just use the [freestyle step]({{site.baseurl}}/docs/codefresh-yaml/steps/freestyle/). The commands you define in a freestyle step run automatically in a Docker container that is attached to that step once the pipeline executes.
+To actually run a docker container you use the [freestyle step]({{site.baseurl}}/docs/codefresh-yaml/steps/freestyle/). The commands you define in a freestyle step run automatically in a Docker container that is attached to that step once the pipeline executes.
 
 Therefore, this command on your local workstation:
 
@@ -275,8 +273,8 @@ Each plugin also defines its input/output in the form of environment variables a
 Now we reach one of the most powerful features of Codefresh pipelines. We have already seen that [freestyle pipeline steps]({{ site.baseurl }}/docs/codefresh-yaml/steps/freestyle/) are just a series of commands that run inside the context of a Docker container. In most cases the images used
 for the freestyle steps are known in advance and come from public (e.g. Dockerhub) or [private Docker registries]({{ site.baseurl }}/docs/docker-registries/external-docker-registries/).
 
-Codefresh is one the few CI/CD solutions that not only offers a [built-in Docker registry]({{ site.baseurl }}/docs/docker-registries/codefresh-registry/)
- accessible to all pipelines
+Codefresh is one of the few CI/CD solutions that not only offers a [built-in Docker registry]({{ site.baseurl }}/docs/docker-registries/codefresh-registry/)
+ accessible to all pipelines,
 but also allows you to **build docker images on demand in the same pipeline where they are required**.
 
 This means that you can create a special Docker image in an early step inside a Codefresh pipeline and then reference it in a later step in the same pipeline.
@@ -303,7 +301,7 @@ You can create a single pipeline with Codefresh that does the following:
 
 This concept is ground-breaking as it allows you to automatically update your build tools that are used in any pipeline.
 Even though you could manually create the Docker images yourself before-hand, it is better to completely automate them
-inside the pipeline they are actually needed. This ensures that both the application and its tooling are always at the latest version.
+inside the pipeline where they are actually needed. This ensures that both the application and its tooling are always at the latest version.
 
 ### How caching works in Codefresh
 
@@ -312,7 +310,7 @@ Codefresh employs several caching mechanisms for both Dockerized and non-dockeri
 ### Calling other pipelines
 
 It is also possible to chain multiple Pipelines together in Codefresh. To accomplish this, Codefresh offers
-a special Docker image that contains the [Codefresh CLI](https://codefresh-io.github.io/cli/) and allows you to trigger another pipeline using its name.
+a special Docker image that contains the [Codefresh CLI](https://codefresh-io.github.io/cli/) and allows you to trigger another pipeline by its name.
 
 {% include 
 image.html 
